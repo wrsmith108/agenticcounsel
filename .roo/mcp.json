@@ -1,0 +1,52 @@
+{
+  "mcpServers": {
+    "claude-code": {
+      "command": "claude-code-server",
+      "args": [],
+      "description": "Advanced code analysis, refactoring, and development capabilities"
+    },
+    "claude-flow": {
+      "command": "claude-flow-server",
+      "args": [],
+      "description": "Workflow orchestration and multi-step development process automation"
+    },
+    "webfetch": {
+      "command": "webfetch-server",
+      "args": [],
+      "description": "Web research and documentation fetching capabilities"
+    },
+    "batch": {
+      "command": "batch-server",
+      "args": [],
+      "description": "Parallel execution and batch processing capabilities"
+    }
+  },
+  "tools": {
+    "allowedTools": [
+      "read_file",
+      "write_to_file",
+      "apply_diff",
+      "insert_content",
+      "search_and_replace",
+      "search_files",
+      "list_files",
+      "list_code_definition_names",
+      "execute_command",
+      "browser_action",
+      "ask_followup_question",
+      "attempt_completion"
+    ]
+  },
+  "settings": {
+    "maxConcurrentOperations": 5,
+    "timeoutMs": 30000,
+    "retryAttempts": 3,
+    "enableLogging": true,
+    "logLevel": "info"
+  },
+  "development": {
+    "enableHotReload": true,
+    "debugMode": false,
+    "verboseLogging": false
+  }
+}

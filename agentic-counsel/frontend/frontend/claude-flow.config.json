@@ -1,0 +1,142 @@
+{
+  "name": "agentic-counsel-frontend",
+  "version": "1.0.0",
+  "description": "Claude-Flow configuration for Agentic Counsel Frontend",
+  "framework": "next.js",
+  "language": "typescript",
+  "sparc": {
+    "enabled": true,
+    "modes": [
+      "architect",
+      "code",
+      "tdd",
+      "security-review",
+      "devops",
+      "integration",
+      "ask",
+      "debug",
+      "optimize",
+      "refactor",
+      "ui-ux",
+      "api-design",
+      "documentation",
+      "workflow",
+      "component-generator",
+      "state-management",
+      "accessibility"
+    ]
+  },
+  "workflows": {
+    "component-generation": {
+      "description": "Automated React component generation with TypeScript",
+      "steps": [
+        "architect: Design component structure",
+        "code: Implement component",
+        "tdd: Create tests",
+        "documentation: Add documentation"
+      ],
+      "templates": {
+        "component": "src/components/templates/component.template.tsx",
+        "test": "src/components/templates/test.template.tsx",
+        "story": "src/components/templates/story.template.tsx"
+      }
+    },
+    "feature-development": {
+      "description": "Complete feature development workflow",
+      "steps": [
+        "ask: Research requirements",
+        "architect: Design feature architecture",
+        "api-design: Design API interfaces",
+        "code: Implement feature",
+        "tdd: Create comprehensive tests",
+        "security-review: Security audit",
+        "integration: Integration testing",
+        "documentation: Update documentation"
+      ]
+    },
+    "code-review": {
+      "description": "Comprehensive code review process",
+      "steps": [
+        "security-review: Security analysis",
+        "optimize: Performance review",
+        "accessibility: Accessibility audit",
+        "refactor: Code quality review",
+        "documentation: Documentation review"
+      ]
+    },
+    "deployment-prep": {
+      "description": "Prepare application for deployment",
+      "steps": [
+        "optimize: Bundle optimization",
+        "tdd: Run all tests",
+        "security-review: Final security check",
+        "devops: Build and deployment configuration",
+        "documentation: Deployment documentation"
+      ]
+    }
+  },
+  "agents": {
+    "max_concurrent": 5,
+    "coordination": {
+      "memory_sharing": true,
+      "task_distribution": "intelligent",
+      "conflict_resolution": "priority_based"
+    }
+  },
+  "memory": {
+    "enabled": true,
+    "categories": [
+      "architecture_patterns",
+      "component_library",
+      "api_interfaces",
+      "testing_strategies",
+      "security_practices",
+      "performance_optimizations",
+      "deployment_configs"
+    ]
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics": [
+      "task_completion_rate",
+      "code_quality_score",
+      "test_coverage",
+      "build_performance",
+      "deployment_success_rate"
+    ]
+  },
+  "integrations": {
+    "next.js": {
+      "version": "15.3.3",
+      "features": ["app_router", "turbopack", "typescript"]
+    },
+    "react": {
+      "version": "19.0.0",
+      "patterns": ["hooks", "context", "suspense"]
+    },
+    "typescript": {
+      "strict": true,
+      "target": "ES2022"
+    },
+    "testing": {
+      "framework": "jest",
+      "coverage_threshold": 80
+    }
+  },
+  "file_patterns": {
+    "components": "src/components/**/*.{ts,tsx}",
+    "pages": "src/app/**/*.{ts,tsx}",
+    "hooks": "src/hooks/**/*.{ts,tsx}",
+    "utils": "src/lib/**/*.{ts,tsx}",
+    "types": "src/types/**/*.ts",
+    "tests": "**/*.{test,spec}.{ts,tsx}",
+    "styles": "**/*.{css,scss,module.css}"
+  },
+  "automation": {
+    "component_scaffolding": true,
+    "test_generation": true,
+    "documentation_sync": true,
+    "type_checking": true,
+    "lint_fixing": true
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "claude-flow": "node workflows/orchestrator.js",
+    "cf": "node workflows/orchestrator.js",
+    "cf:status": "node workflows/orchestrator.js status",
+    "cf:list": "node workflows/orchestrator.js list",
+    "cf:component": "node workflows/component-generator.js",
+    "cf:workflow": "node workflows/orchestrator.js workflow",
+    "cf:feature": "node workflows/orchestrator.js feature",
+    "cf:review": "node workflows/orchestrator.js review",
+    "cf:deploy": "node workflows/orchestrator.js deploy"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.1.1",
+    "axios": "^1.10.0",
+    "claude-flow": "^1.0.54",
+    "lucide-react": "^0.516.0",
+    "next": "15.3.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.58.0",
+    "recharts": "^2.15.3",
+    "socket.io-client": "^4.8.1",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,28 @@
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { {{ComponentName}} } from './{{ComponentName}}';
+
+describe('{{ComponentName}}', () => {
+  it('renders without crashing', () => {
+    render(<{{ComponentName}} />);
+  });
+
+  it('renders children correctly', () => {
+    const testContent = 'Test content';
+    render(<{{ComponentName}}>{testContent}</{{ComponentName}}>);
+    expect(screen.getByText(testContent)).toBeInTheDocument();
+  });
+
+  it('applies custom className', () => {
+    const customClass = 'custom-class';
+    render(<{{ComponentName}} className={customClass} />);
+    const element = screen.getByRole('generic');
+    expect(element).toHaveClass(customClass);
+  });
+
+  it('forwards additional props', () => {
+    const testId = 'test-component';
+    render(<{{ComponentName}} data-testid={testId} />);
+    expect(screen.getByTestId(testId)).toBeInTheDocument();
+  });
+});
