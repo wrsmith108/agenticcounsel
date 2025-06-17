@@ -1,0 +1,52 @@
+{
+  "name": "agentic-counsel",
+  "version": "1.0.0",
+  "description": "AI-powered executive coaching platform - Monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspaces",
+    "build:api": "npm run build --workspace=apps/api",
+    "build:web": "npm run build --workspace=apps/web",
+    "build:shared": "npm run build --workspace=packages/shared",
+    "start": "concurrently \"npm run start:api\" \"npm run start:web\"",
+    "start:api": "npm run start --workspace=apps/api",
+    "start:web": "npm run start --workspace=apps/web",
+    "test": "npm run test --workspaces",
+    "test:api": "npm run test --workspace=apps/api",
+    "lint": "npm run lint --workspaces",
+    "lint:fix": "npm run lint:fix --workspaces",
+    "clean": "npm run clean --workspaces && rm -rf node_modules",
+    "install:all": "npm install",
+    "db:migrate": "npm run db:migrate --workspace=apps/api",
+    "db:seed": "npm run db:seed --workspace=apps/api",
+    "db:setup": "npm run db:setup --workspace=apps/api",
+    "db:status": "npm run db:status --workspace=apps/api"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "ai",
+    "coaching",
+    "personality",
+    "executive-coaching",
+    "monorepo",
+    "typescript",
+    "nextjs",
+    "nodejs"
+  ],
+  "author": "Agentic Counsel Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
