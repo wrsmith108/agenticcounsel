@@ -423,14 +423,46 @@ router.post('/conversations/:id/messages', [...conversationIdValidation, ...send
     } catch (aiError) {
       console.error('💥 BACKEND DEBUG: AI coaching error caught:', aiError);
       
-      // Return user message even if AI fails
+      // Create a fallback coach response when AI fails
+      let fallbackContent = "I apologize, but I'm experiencing some technical difficulties at the moment. Your message has been received, and I'll respond as soon as possible.";
+      let errorType = 'ai_service_unavailable';
+      
+      // Provide more specific feedback based on error type
+      if (aiError && typeof aiError === 'object' && 'status' in aiError) {
+        const status = (aiError as any).status;
+        if (status === 529) {
+          fallbackContent = "I'm currently experiencing high demand and temporary server overload. Your message has been received, and I'll respond shortly once the system stabilizes. Please try sending your message again in a few moments.";
+          errorType = 'api_overloaded';
+        } else if (status === 401) {
+          fallbackContent = "I'm experiencing authentication issues with my AI service. Your message has been received, and our technical team has been notified. Please try again later.";
+          errorType = 'api_authentication_error';
+        } else if (status === 429) {
+          fallbackContent = "I'm temporarily rate-limited due to high usage. Your message has been received, and I'll respond as soon as the rate limit resets. Please try again in a few minutes.";
+          errorType = 'api_rate_limited';
+        }
+      }
+      
+      const fallbackCoachMessage = await db.addMessage({
+        conversation_id: conversationId,
+        sender_type: 'coach',
+        content: fallbackContent,
+        metadata: {
+          is_fallback: true,
+          error_type: errorType,
+          original_error: aiError instanceof Error ? aiError.message : 'Unknown error',
+          timestamp: new Date().toISOString()
+        }
+      });
+      
+      // Return user message with fallback coach response
       const errorResponse = {
         success: true,
-        message: 'Message sent successfully (AI response unavailable)',
+        message: 'Message sent successfully',
         data: {
           user_message: userMessage,
-          coach_response: null,
-          error: 'AI coaching service temporarily unavailable'
+          coach_response: fallbackCoachMessage,
+          error: 'AI coaching service temporarily unavailable',
+          is_fallback: true
         }
       };
       
@@ -442,6 +474,24 @@ router.post('/conversations/:id/messages', [...conversationIdValidation, ...send
       res.status(201).json(errorResponse);
       
       console.log('✅ BACKEND DEBUG: Error response sent successfully');
+      
+      // Send socket updates for fallback response
+      try {
+        const socketService = SocketService.getInstance();
+        if (socketService && conversationId) {
+          console.log('🔌 BACKEND DEBUG: Sending fallback socket updates');
+          
+          // Send user message via socket
+          socketService.sendMessageToConversation(conversationId, 'new_message', errorResponse.data.user_message);
+          
+          // Send fallback coach response via socket
+          socketService.sendMessageToConversation(conversationId, 'new_message', errorResponse.data.coach_response);
+          
+          console.log('✅ BACKEND DEBUG: Fallback socket updates sent');
+        }
+      } catch (socketError) {
+        console.error('💥 BACKEND DEBUG: Socket error for fallback (HTTP response already sent):', socketError);
+      }
     }
 
   } catch (error) {

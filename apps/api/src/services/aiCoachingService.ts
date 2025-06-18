@@ -16,6 +16,8 @@ export class AICoachingService {
   private model: string;
   private maxTokens: number;
   private temperature: number;
+  private lastRequestTime: number = 0;
+  private minRequestInterval: number = 100; // Minimum 100ms between requests
 
   constructor(config: { api_key: string; model: string; max_tokens: number; temperature: number }) {
     this.anthropic = new Anthropic({
@@ -24,6 +26,18 @@ export class AICoachingService {
     this.model = config.model;
     this.maxTokens = config.max_tokens;
     this.temperature = config.temperature;
+  }
+
+  private async rateLimit(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      const waitTime = this.minRequestInterval - timeSinceLastRequest;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    this.lastRequestTime = Date.now();
   }
 
   async generateCoachingResponse(context: CoachingContext): Promise<CoachingResponse> {
@@ -48,12 +62,67 @@ export class AICoachingService {
         { role: 'user' as const, content: fullUserMessage }
       ];
 
-      const completion = await this.anthropic.messages.create({
-        model: this.model,
-        max_tokens: this.maxTokens,
-        temperature: this.temperature,
-        messages: messages
-      });
+      // Apply rate limiting before making API call
+      await this.rateLimit();
+      
+      // Implement robust retry logic for API calls
+      let completion;
+      let retries = 0;
+      const maxRetries = 4; // Increased from 3 to 4
+      
+      while (retries < maxRetries) {
+        try {
+          completion = await this.anthropic.messages.create({
+            model: this.model,
+            max_tokens: this.maxTokens,
+            temperature: this.temperature,
+            messages: messages
+          });
+          
+          // Log successful retry if this wasn't the first attempt
+          if (retries > 0) {
+            logger.info(`Anthropic API call succeeded after ${retries} retries`);
+          }
+          
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          const isRetryableError = 
+            error.status === 529 || // Overloaded
+            error.status === 502 || // Bad Gateway
+            error.status === 503 || // Service Unavailable
+            error.status === 504 || // Gateway Timeout
+            (error.status === 429 && retries < 2); // Rate limited (but only retry first 2 times)
+            
+          if (isRetryableError && retries < maxRetries - 1) {
+            // Calculate exponential backoff with jitter: 1s, 2s, 4s, 8s + random up to 1s
+            const baseWaitTime = Math.pow(2, retries) * 1000;
+            const jitter = Math.random() * 1000; // Add up to 1 second of jitter
+            const waitTime = baseWaitTime + jitter;
+            
+            logger.warn(`Anthropic API error (${error.status}), retrying in ${Math.round(waitTime)}ms...`, { 
+              attempt: retries + 1, 
+              maxRetries,
+              errorType: error.error?.type || 'unknown',
+              errorMessage: error.message
+            });
+            
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            retries++;
+          } else {
+            // Non-retryable error or max retries reached
+            logger.error(`Anthropic API error after ${retries} retries`, {
+              status: error.status,
+              errorType: error.error?.type,
+              message: error.message
+            });
+            throw error;
+          }
+        }
+      }
+      
+      if (!completion) {
+        throw new Error('Failed to get completion after retries');
+      }
 
       const rawResponse = completion.content[0]?.type === 'text' ? completion.content[0].text : '';
       

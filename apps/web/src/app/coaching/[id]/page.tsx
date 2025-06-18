@@ -155,18 +155,33 @@ export default function CoachingChatPage() {
       if (response.success) {
         setNewMessage('');
         
-        // Log the response but rely on Socket.io for real-time updates
+        // Handle response based on what was received
         if (response.data?.user_message && response.data?.coach_response) {
-          console.log('✅ FRONTEND DEBUG: Both messages received via HTTP - relying on socket for updates', {
+          console.log('✅ FRONTEND DEBUG: Both messages received via HTTP', {
             userMessageId: response.data.user_message.message_id,
             coachMessageId: response.data.coach_response.message_id,
+            isFallback: response.data.is_fallback || false,
             coachContent: response.data.coach_response.content?.substring(0, 100) + '...'
           });
+          
+          // If HTTP response includes both messages, add them to the UI immediately
+          // This ensures users see responses even if WebSocket has issues
+          if (!messages.find(m => m.message_id === response.data.user_message.message_id)) {
+            setMessages(prev => [...prev, response.data.user_message]);
+          }
+          if (!messages.find(m => m.message_id === response.data.coach_response.message_id)) {
+            setMessages(prev => [...prev, response.data.coach_response]);
+          }
         } else if (response.data?.user_message) {
           console.log('⚠️ FRONTEND DEBUG: Only user message received via HTTP', {
             userMessageId: response.data.user_message.message_id,
             hasError: 'error' in response.data
           });
+          
+          // Add user message if not already present
+          if (!messages.find(m => m.message_id === response.data.user_message.message_id)) {
+            setMessages(prev => [...prev, response.data.user_message]);
+          }
         } else {
           console.error('❌ FRONTEND DEBUG: No messages in response data');
         }
