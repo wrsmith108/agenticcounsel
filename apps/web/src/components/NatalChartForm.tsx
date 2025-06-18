@@ -4,16 +4,17 @@ import React, { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Calendar, Clock, MapPin, Settings, Loader2 } from 'lucide-react';
-import { HouseSystem, CreateNatalChartRequest } from '@/types';
+import { Calendar, Clock, MapPin, Loader2 } from 'lucide-react';
+import { CreateNatalChartRequest } from '@/types';
 import { LoadingButton } from './LoadingSpinner';
 import { GeocodingService } from '@/lib/geocoding';
 
 const natalChartSchema = z.object({
   birth_date: z.string().min(1, 'Birth date is required'),
-  birth_time: z.string().optional(),
+  birth_hour: z.string().optional(),
+  birth_minute: z.string().optional(),
+  birth_ampm: z.string().optional(),
   birth_location: z.string().min(1, 'Birth location is required').max(100, 'Location too long'),
-  house_system: z.enum(['Placidus', 'Koch', 'Equal', 'Whole Sign', 'Campanus']),
 });
 
 type NatalChartFormData = z.infer<typeof natalChartSchema>;
@@ -24,19 +25,11 @@ interface NatalChartFormProps {
     birth_date: string;
     birth_time?: string;
     birth_location: string;
-    house_system: HouseSystem;
   }>;
   isLoading?: boolean;
   submitButtonText?: string;
 }
 
-const HOUSE_SYSTEMS: { value: HouseSystem; label: string; description: string }[] = [
-  { value: 'Placidus', label: 'Placidus', description: 'Most popular system, unequal houses' },
-  { value: 'Koch', label: 'Koch', description: 'Time-based system, similar to Placidus' },
-  { value: 'Equal', label: 'Equal', description: 'All houses are exactly 30 degrees' },
-  { value: 'Whole Sign', label: 'Whole Sign', description: 'Ancient system, one sign per house' },
-  { value: 'Campanus', label: 'Campanus', description: 'Space-based system' },
-];
 
 export default function NatalChartForm({
   onSubmit,
@@ -59,13 +52,16 @@ export default function NatalChartForm({
     resolver: zodResolver(natalChartSchema),
     defaultValues: {
       birth_date: initialData?.birth_date || '',
-      birth_time: initialData?.birth_time || '',
+      birth_hour: initialData?.birth_time ? (() => {
+        const hour24 = parseInt(initialData.birth_time.split(':')[0]);
+        return hour24 === 0 ? '12' : hour24 > 12 ? (hour24 - 12).toString() : hour24.toString();
+      })() : '',
+      birth_minute: initialData?.birth_time ? initialData.birth_time.split(':')[1] : '',
+      birth_ampm: initialData?.birth_time ? (parseInt(initialData.birth_time.split(':')[0]) >= 12 ? 'PM' : 'AM') : '',
       birth_location: initialData?.birth_location || '',
-      house_system: initialData?.house_system || 'Placidus',
     },
   });
 
-  const watchedLocation = watch('birth_location');
 
   const handleFormSubmit = async (data: NatalChartFormData) => {
     setError('');
@@ -76,15 +72,27 @@ export default function NatalChartForm({
       // Geocode the location to get coordinates
       const geocodingResult = await GeocodingService.geocodeLocation(data.birth_location);
       
+      // Convert 12-hour time to 24-hour format
+      let birth_time: string | undefined;
+      if (data.birth_hour && data.birth_minute && data.birth_ampm) {
+        let hour24 = parseInt(data.birth_hour);
+        if (data.birth_ampm === 'PM' && hour24 !== 12) {
+          hour24 += 12;
+        } else if (data.birth_ampm === 'AM' && hour24 === 12) {
+          hour24 = 0;
+        }
+        birth_time = `${hour24.toString().padStart(2, '0')}:${data.birth_minute.padStart(2, '0')}`;
+      }
+      
       // Create the request with geocoded coordinates
       const requestData: CreateNatalChartRequest = {
         birth_date: data.birth_date,
-        birth_time: data.birth_time,
+        birth_time: birth_time,
         birth_location: geocodingResult.display_name, // Use the formatted location name
         latitude: geocodingResult.latitude,
         longitude: geocodingResult.longitude,
         timezone: geocodingResult.timezone,
-        house_system: data.house_system,
+        house_system: 'Placidus', // Default to Placidus
       };
 
       await onSubmit(requestData);
@@ -134,7 +142,7 @@ export default function NatalChartForm({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <div className="flex items-center space-x-3 mb-6">
-        <Settings className="h-6 w-6 text-purple-600" />
+        <Calendar className="h-6 w-6 text-purple-600" />
         <h2 className="text-xl font-semibold text-gray-900">Birth Information</h2>
       </div>
 
@@ -157,20 +165,44 @@ export default function NatalChartForm({
           </div>
 
           <div>
-            <label htmlFor="birth_time" className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               <Clock className="inline h-4 w-4 mr-1" />
               Birth Time (optional)
             </label>
-            <input
-              {...register('birth_time')}
-              type="time"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-            />
+            <div className="flex gap-2">
+              <select
+                {...register('birth_hour')}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+              >
+                <option value="">Hour</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(hour => (
+                  <option key={hour} value={hour.toString()}>{hour}</option>
+                ))}
+              </select>
+              <select
+                {...register('birth_minute')}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+              >
+                <option value="">Min</option>
+                {Array.from({ length: 60 }, (_, i) => i).map(minute => (
+                  <option key={minute} value={minute.toString().padStart(2, '0')}>
+                    {minute.toString().padStart(2, '0')}
+                  </option>
+                ))}
+              </select>
+              <select
+                {...register('birth_ampm')}
+                className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+              >
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
             <p className="mt-1 text-xs text-gray-500">
               More accurate time provides better house positions
             </p>
-            {errors.birth_time && (
-              <p className="mt-1 text-sm text-red-600">{errors.birth_time.message}</p>
+            {(errors.birth_hour || errors.birth_minute || errors.birth_ampm) && (
+              <p className="mt-1 text-sm text-red-600">Please complete all time fields or leave all empty</p>
             )}
           </div>
         </div>
@@ -213,25 +245,6 @@ export default function NatalChartForm({
           </p>
         </div>
 
-        {/* House System */}
-        <div>
-          <label htmlFor="house_system" className="block text-sm font-medium text-gray-700 mb-2">
-            House System
-          </label>
-          <select
-            {...register('house_system')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-          >
-            {HOUSE_SYSTEMS.map((system) => (
-              <option key={system.value} value={system.value}>
-                {system.label} - {system.description}
-              </option>
-            ))}
-          </select>
-          {errors.house_system && (
-            <p className="mt-1 text-sm text-red-600">{errors.house_system.message}</p>
-          )}
-        </div>
 
         {/* Error Message */}
         {error && (

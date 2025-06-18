@@ -97,7 +97,7 @@ export default function NatalChartDisplay({ chart }: NatalChartDisplayProps) {
             <div className="flex items-center space-x-4">
               <span className="flex items-center">
                 <Calendar className="h-4 w-4 mr-1" />
-                {new Date(chart.birth_data.birth_date).toLocaleDateString()}
+                {new Date(chart.birth_data.birth_date + 'T12:00:00').toLocaleDateString()}
               </span>
               {chart.birth_data.birth_time && (
                 <span className="flex items-center">

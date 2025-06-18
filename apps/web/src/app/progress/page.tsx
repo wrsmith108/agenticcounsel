@@ -283,7 +283,7 @@ export default function ProgressPage() {
                       </div>
                       
                       <div className="flex items-center justify-between text-sm text-gray-500">
-                        <span>Started {new Date(category.created_at).toLocaleDateString()}</span>
+                        <span>Last updated {new Date(category.last_updated).toLocaleDateString()}</span>
                         <span>
                           {category.completion_percentage === 100 ? (
                             <span className="text-green-600 font-medium">Completed!</span>

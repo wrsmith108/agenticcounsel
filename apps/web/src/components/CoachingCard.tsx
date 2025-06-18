@@ -89,18 +89,18 @@ const CoachingCard: React.FC<CoachingCardProps> = ({
       .join(' ');
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
+  const formatTime = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -187,13 +187,6 @@ const CoachingCard: React.FC<CoachingCardProps> = ({
           </div>
         )}
 
-        {session.summary && (
-          <div className="bg-gray-50 rounded-lg p-3">
-            <p className="text-sm text-gray-700 line-clamp-2">
-              {session.summary}
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Actions */}

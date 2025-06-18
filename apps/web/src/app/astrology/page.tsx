@@ -9,7 +9,8 @@ import {
   Edit,
   Trash2,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  ArrowLeft
 } from 'lucide-react';
 import apiClient from '@/lib/api';
 import { NatalChart, CreateNatalChartRequest } from '@/types';
@@ -171,6 +172,14 @@ export default function AstrologyPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 font-medium"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span>Back to Dashboard</span>
+              </button>
+              <div className="h-6 w-px bg-gray-300"></div>
               <Star className="h-8 w-8 text-purple-600" />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Astrology</h1>
@@ -251,7 +260,6 @@ export default function AstrologyPage() {
                 birth_date: natalChart.birth_data.birth_date,
                 birth_time: natalChart.birth_data.birth_time,
                 birth_location: natalChart.birth_data.birth_location,
-                house_system: natalChart.house_system,
               } : undefined}
               isLoading={formLoading}
               submitButtonText={isEditing ? 'Update Natal Chart' : 'Generate Natal Chart'}
