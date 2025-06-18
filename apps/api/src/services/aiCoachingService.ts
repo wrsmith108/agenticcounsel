@@ -129,8 +129,11 @@ export class AICoachingService {
     const personalityContext = this.buildPersonalityContext(context.user_personality);
     const sessionContext = this.buildSessionContext(context.session_type);
     const goalsContext = this.buildGoalsContext(context.coaching_goals);
+    const clientName = this.buildClientNameContext(context.user_first_name, context.user_last_name);
 
     return `You are an expert executive coach with deep expertise in personality-based coaching and leadership development. Your role is to provide empathetic, insightful, and personalized coaching that demonstrates a profound understanding of the client's unique patterns and challenges.
+
+${clientName}
 
 ${personalityContext}
 
@@ -222,6 +225,15 @@ Use these insights to personalize your coaching approach and demonstrate underst
     }
 
     return `GOALS CONTEXT: Current coaching focus areas: ${goals.join(', ')}. Tailor your coaching to support progress in these areas.`;
+  }
+
+  private buildClientNameContext(firstName?: string, lastName?: string): string {
+    if (!firstName && !lastName) {
+      return 'CLIENT NAME: Client name not available. Use "you" to address them directly.';
+    }
+
+    const name = firstName ? (lastName ? `${firstName} ${lastName}` : firstName) : (lastName || '');
+    return `CLIENT NAME: Address the client as "${name}" when appropriate. Use their name naturally in conversation to create personal connection.`;
   }
 
   private buildConversationHistory(history: any[]): Array<{ role: 'user' | 'assistant'; content: string }> {

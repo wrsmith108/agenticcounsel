@@ -185,7 +185,9 @@ class ApiClient {
     session_type: string;
     initial_message?: string;
   }): Promise<APIResponse<{ conversation: CoachingSession; messages?: Message[]; initial_response?: any }>> {
-    const response: AxiosResponse<APIResponse<{ conversation: CoachingSession; messages?: Message[]; initial_response?: any }>> = await this.client.post('/api/coaching/start-session', data);
+    const response: AxiosResponse<APIResponse<{ conversation: CoachingSession; messages?: Message[]; initial_response?: any }>> = await this.client.post('/api/coaching/start-session', data, {
+      timeout: 30000 // 30 seconds for AI coaching responses
+    });
     return response.data;
   }
 
@@ -233,7 +235,9 @@ class ApiClient {
     message_type?: string;
     metadata?: any;
   }): Promise<APIResponse<{ user_message: Message; coach_response: Message; coaching_metadata?: any }>> {
-    const response: AxiosResponse<APIResponse<{ user_message: Message; coach_response: Message; coaching_metadata?: any }>> = await this.client.post(`/api/coaching/conversations/${conversationId}/messages`, messageData);
+    const response: AxiosResponse<APIResponse<{ user_message: Message; coach_response: Message; coaching_metadata?: any }>> = await this.client.post(`/api/coaching/conversations/${conversationId}/messages`, messageData, {
+      timeout: 30000 // 30 seconds for AI coaching responses
+    });
     return response.data;
   }
 

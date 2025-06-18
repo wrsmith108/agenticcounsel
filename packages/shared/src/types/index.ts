@@ -250,6 +250,8 @@ export interface ProgressEntry {
 
 // Backend-specific Coaching Types
 export interface CoachingContext {
+  user_first_name?: string;
+  user_last_name?: string;
   user_personality: PersonalityProfile;
   conversation_history: Message[];
   current_message: string;

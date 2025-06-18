@@ -49,7 +49,7 @@ class SocketService {
   // Join a coaching conversation room
   joinConversation(conversationId: string): void {
     if (this.socket && this.isConnected) {
-      this.socket.emit('join_conversation', { conversationId });
+      this.socket.emit('join_coaching_session', { conversation_id: conversationId });
     }
   }
 

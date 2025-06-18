@@ -5,6 +5,7 @@ import { AICoachingService } from '../services/aiCoachingService';
 import { PersonalityService } from '../services/personalityService';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { CoachingContext, SessionType } from '../types';
+import { SocketService } from '../services/socket';
 
 const router = express.Router();
 
@@ -86,8 +87,10 @@ router.post('/start-session', startSessionValidation, async (req: AuthenticatedR
 
         // Build coaching context
         const coachingContext: CoachingContext = {
-          user_personality: user.personality_profile ? 
-            (typeof user.personality_profile === 'string' ? JSON.parse(user.personality_profile) : user.personality_profile) : 
+          user_first_name: user.first_name,
+          user_last_name: user.last_name,
+          user_personality: user.personality_profile ?
+            (typeof user.personality_profile === 'string' ? JSON.parse(user.personality_profile) : user.personality_profile) :
             undefined,
           conversation_history: [],
           current_message: initial_message,
@@ -312,8 +315,10 @@ router.post('/conversations/:id/messages', [...conversationIdValidation, ...send
 
       // Build coaching context
       const coachingContext: CoachingContext = {
-        user_personality: user?.personality_profile ? 
-          (typeof user.personality_profile === 'string' ? JSON.parse(user.personality_profile) : user.personality_profile) : 
+        user_first_name: user?.first_name,
+        user_last_name: user?.last_name,
+        user_personality: user?.personality_profile ?
+          (typeof user.personality_profile === 'string' ? JSON.parse(user.personality_profile) : user.personality_profile) :
           undefined,
         conversation_history: conversationHistory.slice(0, -1), // Exclude the message we just added
         current_message: content,
@@ -323,7 +328,21 @@ router.post('/conversations/:id/messages', [...conversationIdValidation, ...send
       };
 
       // Generate AI response
+      console.log('🤖 BACKEND DEBUG: Generating AI coaching response', {
+        conversationId,
+        userMessageId: userMessage.message_id,
+        contextHasPersonality: !!coachingContext.user_personality,
+        sessionType: coachingContext.session_type
+      });
+
       const coachingResponse = await aiCoachingService.generateCoachingResponse(coachingContext);
+
+      console.log('✨ BACKEND DEBUG: AI response generated', {
+        responseLength: coachingResponse.content.length,
+        hasMetadata: !!coachingResponse.metadata,
+        confidenceScore: coachingResponse.metadata?.confidence_score,
+        ahaMoment: coachingResponse.metadata?.aha_moment_type
+      });
 
       // Add coach response to conversation
       const coachMessage = await db.addMessage({
@@ -333,21 +352,79 @@ router.post('/conversations/:id/messages', [...conversationIdValidation, ...send
         metadata: coachingResponse.metadata
       });
 
-      res.status(201).json({
-        success: true,
-        message: 'Message sent successfully',
-        data: {
-          user_message: userMessage,
-          coach_response: coachMessage,
-          coaching_metadata: coachingResponse.metadata
-        }
+      console.log('💾 BACKEND DEBUG: Coach message saved to database', {
+        coachMessageId: coachMessage.message_id,
+        contentPreview: coachingResponse.content.substring(0, 100) + '...'
       });
 
+      const responseData = {
+        user_message: userMessage,
+        coach_response: coachMessage,
+        coaching_metadata: coachingResponse.metadata
+      };
+
+      console.log('📤 BACKEND DEBUG: Preparing HTTP response', {
+        hasUserMessage: !!responseData.user_message,
+        hasCoachResponse: !!responseData.coach_response,
+        userMessageId: responseData.user_message?.message_id,
+        coachMessageId: responseData.coach_response?.message_id,
+        responseStructure: Object.keys(responseData),
+        responseDataSize: JSON.stringify(responseData).length
+      });
+
+      console.log('🚀 BACKEND DEBUG: About to send HTTP response');
+      
+      const httpResponse = {
+        success: true,
+        message: 'Message sent successfully',
+        data: responseData
+      };
+      
+      console.log('📊 BACKEND DEBUG: HTTP response payload', {
+        payloadSize: JSON.stringify(httpResponse).length,
+        hasSuccess: httpResponse.success,
+        hasData: !!httpResponse.data,
+        dataKeys: httpResponse.data ? Object.keys(httpResponse.data) : []
+      });
+      
+      // Send HTTP response FIRST to ensure it completes
+      res.status(201).json(httpResponse);
+      
+      console.log('✅ BACKEND DEBUG: HTTP response sent successfully');
+
+      // Send real-time updates via Socket.io AFTER HTTP response
+      try {
+        const socketService = SocketService.getInstance();
+        if (socketService && conversationId) {
+          console.log('🔌 BACKEND DEBUG: Sending socket updates', {
+            conversationId,
+            userMessageId: responseData.user_message?.message_id,
+            coachMessageId: responseData.coach_response?.message_id
+          });
+
+          // Send user message via socket
+          socketService.sendMessageToConversation(conversationId, 'new_message', responseData.user_message);
+          
+          // Send coach response via socket
+          socketService.sendMessageToConversation(conversationId, 'new_message', responseData.coach_response);
+          
+          console.log('✅ BACKEND DEBUG: Socket updates sent successfully');
+        } else {
+          console.warn('⚠️ BACKEND DEBUG: Socket service not available for real-time updates', {
+            hasSocketService: !!socketService,
+            hasConversationId: !!conversationId
+          });
+        }
+      } catch (socketError) {
+        // Don't let socket errors affect the HTTP response since it's already sent
+        console.error('💥 BACKEND DEBUG: Socket error (HTTP response already sent):', socketError);
+      }
+
     } catch (aiError) {
-      console.error('AI coaching error:', aiError);
+      console.error('💥 BACKEND DEBUG: AI coaching error caught:', aiError);
       
       // Return user message even if AI fails
-      res.status(201).json({
+      const errorResponse = {
         success: true,
         message: 'Message sent successfully (AI response unavailable)',
         data: {
@@ -355,15 +432,32 @@ router.post('/conversations/:id/messages', [...conversationIdValidation, ...send
           coach_response: null,
           error: 'AI coaching service temporarily unavailable'
         }
+      };
+      
+      console.log('🚨 BACKEND DEBUG: Sending error response', {
+        hasUserMessage: !!errorResponse.data.user_message,
+        errorMessage: errorResponse.data.error
       });
+      
+      res.status(201).json(errorResponse);
+      
+      console.log('✅ BACKEND DEBUG: Error response sent successfully');
     }
 
   } catch (error) {
-    console.error('Send message error:', error);
-    res.status(500).json({
+    console.error('💥 BACKEND DEBUG: Top-level error caught:', error);
+    console.error('💥 BACKEND DEBUG: Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
+    const serverErrorResponse = {
       success: false,
       message: 'Internal server error while sending message'
-    });
+    };
+    
+    console.log('🚨 BACKEND DEBUG: Sending server error response');
+    
+    res.status(500).json(serverErrorResponse);
+    
+    console.log('✅ BACKEND DEBUG: Server error response sent successfully');
   }
 });
 
@@ -434,6 +528,67 @@ router.get('/conversations/:id/messages', conversationIdValidation, async (req: 
     res.status(500).json({
       success: false,
       message: 'Internal server error while retrieving messages'
+    });
+  }
+});
+
+// End coaching session
+router.post('/conversations/:id/end', conversationIdValidation, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+
+    const conversationId = req.params['id'];
+    const db = DatabaseService.getInstance();
+
+    // Verify conversation ownership and that it's active
+    const conversationResult = await db.query(`
+      SELECT * FROM coaching_conversations
+      WHERE conversation_id = $1 AND user_id = $2 AND status = 'active'
+    `, [conversationId, req.user.user_id]);
+
+    if (conversationResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Active conversation not found'
+      });
+    }
+
+    // Update conversation status to ended
+    const updatedConversation = await db.query(`
+      UPDATE coaching_conversations
+      SET status = 'ended', updated_at = CURRENT_TIMESTAMP
+      WHERE conversation_id = $1 AND user_id = $2
+      RETURNING *
+    `, [conversationId, req.user.user_id]);
+
+    res.json({
+      success: true,
+      message: 'Coaching session ended successfully',
+      data: {
+        conversation: updatedConversation.rows[0]
+      }
+    });
+
+  } catch (error) {
+    console.error('End session error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error while ending coaching session'
     });
   }
 });

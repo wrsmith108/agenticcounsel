@@ -17,11 +17,17 @@ interface AuthenticatedSocket extends Socket {
 }
 
 export class SocketService {
+  private static instance: SocketService | null = null;
   private io: SocketIOServer;
   private connectedUsers: Map<string, string> = new Map(); // userId -> socketId
 
   constructor(io: SocketIOServer) {
     this.io = io;
+    SocketService.instance = this;
+  }
+
+  static getInstance(): SocketService | null {
+    return SocketService.instance;
   }
 
   initialize(): void {

@@ -76,23 +76,51 @@ export default function CoachingChatPage() {
   const setupWebSocket = () => {
     // Get token from localStorage or API client
     const token = localStorage.getItem('auth_token') || apiClient.getToken();
+    
+    console.log('🔌 FRONTEND DEBUG: Setting up WebSocket connection', {
+      conversationId,
+      hasToken: !!token
+    });
+    
     socketService.connect(token || undefined);
     
     socketService.on('connect', () => {
+      console.log('✅ FRONTEND DEBUG: Socket connected');
       setConnected(true);
-      socketService.joinConversation(conversationId);
+      
+      // Join the coaching session room
+      socketService.emit('join_coaching_session', { conversation_id: conversationId });
     });
 
     socketService.on('disconnect', () => {
+      console.log('❌ FRONTEND DEBUG: Socket disconnected');
       setConnected(false);
     });
 
+    socketService.on('session_joined', (data: any) => {
+      console.log('🏠 FRONTEND DEBUG: Joined coaching session', data);
+    });
+
     socketService.on('new_message', (message: Message) => {
+      console.log('📨 FRONTEND DEBUG: Received new message via socket', {
+        messageId: message.message_id,
+        senderType: message.sender_type,
+        contentPreview: message.content?.substring(0, 50) + '...'
+      });
       setMessages(prev => [...prev, message]);
     });
 
     socketService.on('conversation_updated', (updatedConversation: CoachingSession) => {
+      console.log('🔄 FRONTEND DEBUG: Conversation updated via socket', {
+        conversationId: updatedConversation.conversation_id,
+        status: updatedConversation.status
+      });
       setConversation(updatedConversation);
+    });
+
+    // Listen for socket connection errors
+    socketService.on('connect_error', (error: any) => {
+      console.error('💥 FRONTEND DEBUG: Socket connection error:', error);
     });
   };
 
@@ -104,16 +132,52 @@ export default function CoachingChatPage() {
     try {
       setSending(true);
       
+      console.log('🚀 FRONTEND DEBUG: Sending message', {
+        conversationId,
+        messageContent: newMessage.trim(),
+        currentMessagesCount: messages.length
+      });
+      
       const response = await apiClient.sendCoachingMessage(conversationId, {
         content: newMessage.trim(),
         message_type: 'user_message'
       });
 
+      console.log('📥 FRONTEND DEBUG: API Response received', {
+        success: response.success,
+        hasData: !!response.data,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        userMessage: response.data?.user_message ? 'present' : 'missing',
+        coachResponse: response.data?.coach_response ? 'present' : 'missing',
+        fullResponse: response
+      });
+
       if (response.success) {
         setNewMessage('');
+        
+        // Log the response but rely on Socket.io for real-time updates
+        if (response.data?.user_message && response.data?.coach_response) {
+          console.log('✅ FRONTEND DEBUG: Both messages received via HTTP - relying on socket for updates', {
+            userMessageId: response.data.user_message.message_id,
+            coachMessageId: response.data.coach_response.message_id,
+            coachContent: response.data.coach_response.content?.substring(0, 100) + '...'
+          });
+        } else if (response.data?.user_message) {
+          console.log('⚠️ FRONTEND DEBUG: Only user message received via HTTP', {
+            userMessageId: response.data.user_message.message_id,
+            hasError: 'error' in response.data
+          });
+        } else {
+          console.error('❌ FRONTEND DEBUG: No messages in response data');
+        }
+      } else {
+        console.error('❌ FRONTEND DEBUG: API call failed', {
+          message: response.message,
+          response
+        });
       }
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('💥 FRONTEND DEBUG: Exception during message send:', error);
     } finally {
       setSending(false);
     }
