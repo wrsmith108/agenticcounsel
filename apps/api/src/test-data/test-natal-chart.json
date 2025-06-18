@@ -1,0 +1,182 @@
+{
+  "test_case": "May 17, 1977 - Vancouver, BC Test Case",
+  "birth_data": {
+    "birth_date": "1977-05-17",
+    "birth_time": "11:29",
+    "birth_location": "Vancouver, BC, Canada",
+    "latitude": 49.2608724,
+    "longitude": -123.113952,
+    "timezone": "PDT (UTC-7)"
+  },
+  "expected_results": {
+    "chart_system": "Tropical Zodiac, Placidus Houses",
+    "planetary_positions": {
+      "Sun": {
+        "zodiac_sign": "Taurus",
+        "degree_in_sign": 26.717,
+        "longitude": 56.717,
+        "description": "26°43'"
+      },
+      "Moon": {
+        "zodiac_sign": "Taurus",
+        "degree_in_sign": 22.917,
+        "longitude": 52.917,
+        "description": "22°55'"
+      },
+      "Mercury": {
+        "zodiac_sign": "Taurus",
+        "degree_in_sign": 5.3,
+        "longitude": 35.3,
+        "description": "5°18'"
+      },
+      "Venus": {
+        "zodiac_sign": "Aries",
+        "degree_in_sign": 15.133,
+        "longitude": 15.133,
+        "description": "15°08'"
+      },
+      "Mars": {
+        "zodiac_sign": "Aries",
+        "degree_in_sign": 15.433,
+        "longitude": 15.433,
+        "description": "15°26'"
+      },
+      "Jupiter": {
+        "zodiac_sign": "Gemini",
+        "degree_in_sign": 9.567,
+        "longitude": 69.567,
+        "description": "9°34'"
+      },
+      "Saturn": {
+        "zodiac_sign": "Leo",
+        "degree_in_sign": 11.117,
+        "longitude": 131.117,
+        "description": "11°07'"
+      },
+      "Uranus": {
+        "zodiac_sign": "Scorpio",
+        "degree_in_sign": 9.033,
+        "longitude": 219.033,
+        "description": "9°02' R",
+        "retrograde": true
+      },
+      "Neptune": {
+        "zodiac_sign": "Sagittarius",
+        "degree_in_sign": 15.267,
+        "longitude": 255.267,
+        "description": "15°16' R",
+        "retrograde": true
+      },
+      "Pluto": {
+        "zodiac_sign": "Libra",
+        "degree_in_sign": 11.75,
+        "longitude": 191.75,
+        "description": "11°45' R",
+        "retrograde": true
+      },
+      "Lilith": {
+        "zodiac_sign": "Gemini",
+        "degree_in_sign": 2.75,
+        "longitude": 62.75,
+        "description": "2°45'"
+      },
+      "North Node": {
+        "zodiac_sign": "Libra",
+        "degree_in_sign": 24.017,
+        "longitude": 204.017,
+        "description": "24°01'"
+      },
+      "Ascendant": {
+        "zodiac_sign": "Leo",
+        "degree_in_sign": 16.383,
+        "longitude": 136.383,
+        "description": "16°23'"
+      },
+      "Midheaven": {
+        "zodiac_sign": "Taurus",
+        "degree_in_sign": 1.633,
+        "longitude": 31.633,
+        "description": "1°38'"
+      }
+    },
+    "house_cusps": {
+      "1": {
+        "zodiac_sign": "Leo",
+        "degree_in_sign": 16.383,
+        "longitude": 136.383,
+        "description": "ASC Leo 16°23'"
+      },
+      "2": {
+        "zodiac_sign": "Virgo",
+        "degree_in_sign": 5.2,
+        "longitude": 155.2,
+        "description": "Virgo 5°12'"
+      },
+      "3": {
+        "zodiac_sign": "Virgo",
+        "degree_in_sign": 29.5,
+        "longitude": 179.5,
+        "description": "Virgo 29°30'"
+      },
+      "4": {
+        "zodiac_sign": "Scorpio",
+        "degree_in_sign": 1.633,
+        "longitude": 211.633,
+        "description": "Scorpio 1°38'"
+      },
+      "5": {
+        "zodiac_sign": "Sagittarius",
+        "degree_in_sign": 10.417,
+        "longitude": 250.417,
+        "description": "Sagittarius 10°25'"
+      },
+      "6": {
+        "zodiac_sign": "Capricorn",
+        "degree_in_sign": 17.05,
+        "longitude": 287.05,
+        "description": "Capricorn 17°03'"
+      },
+      "7": {
+        "zodiac_sign": "Aquarius",
+        "degree_in_sign": 16.383,
+        "longitude": 316.383,
+        "description": "Aquarius 16°23'"
+      },
+      "8": {
+        "zodiac_sign": "Pisces",
+        "degree_in_sign": 5.2,
+        "longitude": 335.2,
+        "description": "Pisces 5°12'"
+      },
+      "9": {
+        "zodiac_sign": "Pisces",
+        "degree_in_sign": 29.5,
+        "longitude": 359.5,
+        "description": "Pisces 29°30'"
+      },
+      "10": {
+        "zodiac_sign": "Taurus",
+        "degree_in_sign": 1.633,
+        "longitude": 31.633,
+        "description": "MC Taurus 1°38'"
+      },
+      "11": {
+        "zodiac_sign": "Gemini",
+        "degree_in_sign": 10.417,
+        "longitude": 70.417,
+        "description": "Gemini 10°25'"
+      },
+      "12": {
+        "zodiac_sign": "Cancer",
+        "degree_in_sign": 17.05,
+        "longitude": 107.05,
+        "description": "Cancer 17°03'"
+      }
+    }
+  },
+  "tolerance": {
+    "planetary_positions": 1.0,
+    "house_cusps": 2.0,
+    "description": "Acceptable deviation in degrees for test validation"
+  }
+}

@@ -472,6 +472,7 @@ router.get('/history', async (req: AuthenticatedRequest, res: Response) => {
         tracking_id,
         goal_category,
         current_progress,
+        current_progress_data,
         updated_at as recorded_at
       FROM progress_tracking
       WHERE user_id = $1 ${dateFilter}
@@ -480,12 +481,12 @@ router.get('/history', async (req: AuthenticatedRequest, res: Response) => {
 
     // Transform the data for frontend consumption
     const historyData = historyResult.rows.map((record: any) => {
-      const currentProgress = record.current_progress || {};
+      const currentProgressData = record.current_progress_data || {};
       return {
         recorded_at: record.recorded_at,
-        progress_percentage: currentProgress.completion_percentage || 0,
+        progress_percentage: currentProgressData.completion_percentage || record.current_progress || 0,
         goal_category: record.goal_category,
-        current_phase: currentProgress.current_phase || 'Not started'
+        current_phase: currentProgressData.current_phase || 'Not started'
       };
     });
 

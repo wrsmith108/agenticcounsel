@@ -169,6 +169,31 @@ router.post('/natal-chart', createNatalChartValidation, asyncHandler(async (req:
     timezone
   };
 
+  // Check if user already has a natal chart and clean up incomplete ones
+  const db = DatabaseService.getInstance();
+  const existingCharts = await db.query(
+    'SELECT chart_id FROM natal_charts WHERE user_id = $1',
+    [req.user.user_id]
+  );
+
+  // Clean up any existing charts with 0 planetary positions
+  for (const chart of existingCharts.rows) {
+    const positionsCount = await db.query(
+      'SELECT COUNT(*) as count FROM planetary_positions WHERE chart_id = $1',
+      [chart.chart_id]
+    );
+    
+    if (parseInt(positionsCount.rows[0].count) === 0) {
+      logger.info('Removing incomplete natal chart', {
+        chartId: chart.chart_id,
+        userId: req.user.user_id
+      });
+      
+      // Delete the incomplete chart
+      await db.query('DELETE FROM natal_charts WHERE chart_id = $1', [chart.chart_id]);
+    }
+  }
+
   // Calculate natal chart using Swiss Ephemeris service
   const swissEphemerisService = SwissEphemerisService.getInstance();
   const natalChart = await swissEphemerisService.calculateNatalChart(
@@ -183,6 +208,50 @@ router.post('/natal-chart', createNatalChartValidation, asyncHandler(async (req:
   });
 
   res.status(201).json(formatResponse(natalChart, 'Natal chart created successfully'));
+}));
+
+// DELETE /api/astrology/user/:userId/charts - Delete incomplete natal chart
+router.delete('/user/:userId/charts', userIdValidation, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError('Validation failed', 400, 'VALIDATION_ERROR');
+  }
+
+  if (!req.user) {
+    throw new AppError('User not authenticated', 401, 'UNAUTHORIZED');
+  }
+
+  const targetUserId = req.params['userId'];
+  
+  // Check if requesting user owns the chart or has permission
+  if (req.user.user_id !== targetUserId) {
+    throw new AppError('Access denied', 403, 'ACCESS_DENIED');
+  }
+
+  const db = DatabaseService.getInstance();
+  
+  // Find and delete natal charts with 0 planetary positions
+  const chartsToDelete = await db.query(`
+    SELECT nc.chart_id 
+    FROM natal_charts nc
+    LEFT JOIN planetary_positions pp ON nc.chart_id = pp.chart_id
+    WHERE nc.user_id = $1
+    GROUP BY nc.chart_id
+    HAVING COUNT(pp.position_id) = 0
+  `, [targetUserId]);
+
+  let deletedCount = 0;
+  for (const chart of chartsToDelete.rows) {
+    await db.query('DELETE FROM natal_charts WHERE chart_id = $1', [chart.chart_id]);
+    deletedCount++;
+    
+    logger.info('Deleted incomplete natal chart', {
+      chartId: chart.chart_id,
+      userId: targetUserId
+    });
+  }
+
+  res.json(formatResponse({ deletedCharts: deletedCount }, `Removed ${deletedCount} incomplete natal chart(s)`));
 }));
 
 // GET /api/astrology/natal-chart/:userId - Retrieve user's natal chart data

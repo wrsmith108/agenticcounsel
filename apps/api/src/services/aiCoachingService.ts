@@ -150,12 +150,13 @@ COACHING APPROACH:
 - Focus on growth and development opportunities
 
 RESPONSE GUIDELINES:
-- Keep responses conversational and warm (150-300 words)
+- Keep responses brief and focused (75-125 words maximum)
 - Use "you" language to make it personal
 - Reference their personality patterns when relevant
-- Ask thoughtful follow-up questions
 - Provide specific, actionable insights
 - Maintain professional coaching boundaries
+- Group ALL questions at the end using bullet points
+- Structure: [Insight/Response Body] + [Questions section with bullets]
 
 Remember: Your goal is to create "aha moments" where the client feels truly seen and understood, leading to meaningful insights about their patterns and growth opportunities.`;
   }
@@ -184,7 +185,9 @@ DELIVERY REQUIREMENTS:
 - Use specific personality insights, not generic advice
 - Create an emotional connection and recognition
 - Be specific and actionable
-- Keep it focused and impactful (100-200 words)
+- Keep it focused and impactful (75-125 words)
+- Group ALL questions at the end using bullet points
+- Structure: [Insight/Response Body] + [Questions section with bullets]
 - Use warm, professional coaching language
 
 The client should feel a strong sense of recognition and understanding when they read this.`;
@@ -307,8 +310,8 @@ Use these insights to personalize your coaching approach and demonstrate underst
 
   async validateResponseQuality(response: string): Promise<boolean> {
     try {
-      // Check for appropriate length
-      if (response.length < 50 || response.length > 1000) return false;
+      // Check for appropriate length (shorter responses now)
+      if (response.length < 50 || response.length > 600) return false;
 
       // Check for coaching language patterns
       const coachingPatterns = [

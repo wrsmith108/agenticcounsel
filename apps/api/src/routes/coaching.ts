@@ -73,7 +73,7 @@ router.post('/start-session', startSessionValidation, async (req: AuthenticatedR
         const aiCoachingService = new AICoachingService({
           api_key: process.env['ANTHROPIC_API_KEY'] || '',
           model: process.env['ANTHROPIC_MODEL'] || 'claude-3-sonnet-20240229',
-          max_tokens: parseInt(process.env['ANTHROPIC_MAX_TOKENS'] || '1000'),
+          max_tokens: parseInt(process.env['ANTHROPIC_MAX_TOKENS'] || '600'),
           temperature: parseFloat(process.env['ANTHROPIC_TEMPERATURE'] || '0.7')
         });
 
@@ -568,13 +568,20 @@ router.post('/conversations/:id/end', conversationIdValidation, async (req: Auth
       });
     }
 
-    // Update conversation status to ended
+    // Update conversation status to completed
     const updatedConversation = await db.query(`
       UPDATE coaching_conversations
-      SET status = 'ended', updated_at = CURRENT_TIMESTAMP
+      SET status = 'completed', updated_at = CURRENT_TIMESTAMP
       WHERE conversation_id = $1 AND user_id = $2
       RETURNING *
     `, [conversationId, req.user.user_id]);
+
+    if (updatedConversation.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Conversation not found or already completed'
+      });
+    }
 
     res.json({
       success: true,
@@ -586,9 +593,21 @@ router.post('/conversations/:id/end', conversationIdValidation, async (req: Auth
 
   } catch (error) {
     console.error('End session error:', error);
+    console.error('Error stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('Error details:', {
+      conversationId: req.params['id'],
+      userId: req.user?.user_id,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : typeof error
+    });
+    
     res.status(500).json({
       success: false,
-      message: 'Internal server error while ending coaching session'
+      message: 'Internal server error while ending coaching session',
+      debug: process.env['NODE_ENV'] === 'development' ? {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      } : undefined
     });
   }
 });
