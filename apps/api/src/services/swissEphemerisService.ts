@@ -60,6 +60,119 @@ export class SwissEphemerisService {
   }
 
   /**
+   * Calculate natal chart with graceful degradation for missing birth data
+   */
+  async calculatePartialNatalChart(
+    birthData: Partial<SwissBirthData>, 
+    userId: string, 
+    houseSystem: HouseSystem = 'Placidus'
+  ): Promise<Partial<NatalChartData> & { available_components: string[], missing_components: string[], completeness_tier: number }> {
+    try {
+      logger.info('Starting partial natal chart calculation', { userId, birthData });
+
+      const availableComponents: string[] = [];
+      const missingComponents: string[] = [];
+      let completenessTier = 1;
+
+      // Partial chart object
+      const partialChart: Partial<NatalChartData> = {
+        user_id: userId,
+        birth_data: birthData as SwissBirthData,
+        house_system: houseSystem,
+        created_at: new Date()
+      };
+
+      // Check what data is available and calculate accordingly
+      if (birthData.birth_date) {
+        completenessTier = 2;
+        availableComponents.push('Sun', 'Moon');
+        
+        // Calculate date-based positions (Sun, Moon) without location/time
+        const birthDate = typeof birthData.birth_date === 'string' ? new Date(birthData.birth_date) : birthData.birth_date!;
+        const dateOnlyJulianDay = this.convertDateToJulianDay(birthDate);
+        partialChart.planetary_positions = await this.calculateDateBasedPositions(dateOnlyJulianDay);
+        
+        if (birthData.birth_time && birthData.latitude !== undefined && birthData.longitude !== undefined) {
+          completenessTier = 3;
+          availableComponents.push('Rising Sign', 'Houses', 'Complete Planetary Positions', 'Aspects');
+          
+          // Full calculation possible
+          const fullChart = await this.calculateNatalChart(birthData as SwissBirthData, userId, houseSystem);
+          Object.assign(partialChart, fullChart);
+        } else {
+          missingComponents.push('Rising Sign', 'Houses', 'Precise Planetary Positions', 'Aspects');
+          if (!birthData.birth_time) missingComponents.push('Birth Time');
+          if (birthData.latitude === undefined || birthData.longitude === undefined) {
+            missingComponents.push('Birth Location');
+          }
+        }
+      } else {
+        missingComponents.push('Birth Date', 'All Astrological Components');
+      }
+
+      return {
+        ...partialChart,
+        available_components: availableComponents,
+        missing_components: missingComponents,
+        completeness_tier: completenessTier
+      };
+
+    } catch (error) {
+      logger.error('Error calculating partial natal chart:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper method to calculate basic planetary positions with just birth date
+   */
+  private async calculateDateBasedPositions(julianDay: number): Promise<PlanetaryPosition[]> {
+    const positions: PlanetaryPosition[] = [];
+    
+    // Calculate Sun and Moon positions (most accurate with just date)
+    const sunPosition = this.calculatePlanetaryPositionCalibrated('Sun', julianDay);
+    const moonPosition = this.calculatePlanetaryPositionCalibrated('Moon', julianDay);
+    
+    positions.push({
+      body: 'Sun',
+      longitude: sunPosition,
+      latitude: 0, // Simplified for date-only calculation
+      distance: 1, // Simplified
+      speed: 0.9856, // Average daily motion
+      zodiac_sign: this.getZodiacSign(sunPosition),
+      degree_in_sign: this.getDegreeInSign(sunPosition),
+      house: null, // Cannot determine without birth time/location
+      is_retrograde: false
+    });
+
+    positions.push({
+      body: 'Moon',
+      longitude: moonPosition,
+      latitude: 0, // Simplified
+      distance: 1, // Simplified  
+      speed: 13.176, // Average daily motion
+      zodiac_sign: this.getZodiacSign(moonPosition),
+      degree_in_sign: this.getDegreeInSign(moonPosition),
+      house: null, // Cannot determine without birth time/location
+      is_retrograde: false
+    });
+
+    return positions;
+  }
+
+  /**
+   * Convert just date to Julian Day (noon UTC)
+   */
+  private convertDateToJulianDay(birthDate: Date): number {
+    const year = birthDate.getFullYear();
+    const month = birthDate.getMonth() + 1;
+    const day = birthDate.getDate();
+    
+    // Use noon UTC for consistency when only date is available
+    return this.calculateJulianDay(year, month, day, 12, 0, 0);
+  }
+
+  /**
    * Main method to calculate complete natal chart
    */
   async calculateNatalChart(birthData: SwissBirthData, userId: string, houseSystem: HouseSystem = 'Placidus'): Promise<NatalChartData> {
@@ -236,8 +349,8 @@ export class SwissEphemerisService {
 
           if (actualOrb <= definition.orb) {
             aspects.push({
-              body1: body1.celestial_body,
-              body2: body2.celestial_body,
+              body1: body1.celestial_body || body1.body,
+              body2: body2.celestial_body || body2.body,
               aspect_type: aspectType as AspectType,
               orb: actualOrb,
               exact_angle: angle,
@@ -498,6 +611,7 @@ export class SwissEphemerisService {
       const houseNumber = this.calculateHousePosition(normalizedLongitude, julianDay, latitude, longitude);
 
       return {
+        body: body,
         celestial_body: body,
         longitude: normalizedLongitude,
         latitude: planetLatitude,
@@ -526,6 +640,7 @@ export class SwissEphemerisService {
 
     return [
       {
+        body: 'Ascendant',
         celestial_body: 'Ascendant',
         longitude: normalizedAscendant,
         latitude: 0,
@@ -535,6 +650,7 @@ export class SwissEphemerisService {
         retrograde: false
       },
       {
+        body: 'Midheaven',
         celestial_body: 'Midheaven',
         longitude: normalizedMidheaven,
         latitude: 0,
@@ -948,6 +1064,39 @@ export class SwissEphemerisService {
         aspect.applying
       ]);
     }
+  }
+
+  // Helper methods for tier-based calculations
+  
+  private getZodiacSign(longitude: number): ZodiacSign {
+    const normalizedLongitude = this.normalizeLongitude(longitude);
+    const signIndex = Math.floor(normalizedLongitude / 30);
+    return ZODIAC_SIGNS[signIndex] || 'Aries'; // Fallback to Aries if index is out of bounds
+  }
+
+  private getDegreeInSign(longitude: number): number {
+    const normalizedLongitude = this.normalizeLongitude(longitude);
+    return normalizedLongitude % 30;
+  }
+
+  private calculateJulianDay(year: number, month: number, day: number, hour: number, minute: number, second: number): number {
+    // Julian Day calculation using standard algorithm
+    if (month <= 2) {
+      year -= 1;
+      month += 12;
+    }
+    
+    const a = Math.floor(year / 100);
+    const b = 2 - a + Math.floor(a / 4);
+    
+    const jd = Math.floor(365.25 * (year + 4716)) + 
+               Math.floor(30.6001 * (month + 1)) + 
+               day + b - 1524.5;
+               
+    // Add time component
+    const timeComponent = (hour + minute / 60 + second / 3600) / 24;
+    
+    return jd + timeComponent;
   }
 }
 

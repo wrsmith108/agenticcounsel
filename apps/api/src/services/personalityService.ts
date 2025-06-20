@@ -18,30 +18,44 @@ export class PersonalityService {
     this.databaseService = databaseService;
   }
 
-  async generatePersonalityProfile(birthData: BirthData): Promise<PersonalityProfile> {
+  async generatePersonalityProfile(birthData: Partial<BirthData>): Promise<PersonalityProfile> {
     try {
-      logger.info('Generating personality profile', { birthData: { ...birthData, birth_time: birthData.birth_time ? 'provided' : 'not provided' } });
+      logger.info('Generating personality profile', { 
+        birthData: { 
+          hasBirthDate: !!birthData.birth_date,
+          hasBirthTime: !!birthData.birth_time, 
+          hasBirthLocation: !!birthData.birth_location 
+        } 
+      });
 
-      // Calculate astrological data
-      const astrologicalData = await this.calculateAstrologicalData(birthData);
+      // Determine tier and calculate accordingly
+      const tier = this.determineProfileTier(birthData);
       
-      // Map to psychological traits
-      const psychologicalTraits = this.mapToPsychologicalTraits(astrologicalData);
+      // Calculate astrological data based on available information
+      const astrologicalData = await this.calculateTieredAstrologicalData(birthData, tier);
+      
+      // Map to psychological traits with tier-appropriate depth
+      const psychologicalTraits = this.mapToTieredPsychologicalTraits(astrologicalData, tier);
       
       // Calculate confidence based on available data
-      const accuracyConfidence = this.calculateAccuracyConfidence(birthData);
+      const accuracyConfidence = this.calculateTieredAccuracyConfidence(birthData, tier);
 
       const profile: PersonalityProfile = {
         astrological_basis: astrologicalData,
         psychological_traits: psychologicalTraits,
         accuracy_confidence: accuracyConfidence,
         generated_at: new Date(),
-        created_at: new Date()
+        created_at: new Date(),
+        // Add new fields for progressive enhancement
+        profile_tier: tier,
+        enhancement_suggestions: this.getEnhancementSuggestions(birthData, tier),
+        missing_components: this.getMissingComponents(birthData)
       };
 
       logger.info('Personality profile generated successfully', { 
         userId: 'pending', 
-        confidence: accuracyConfidence 
+        confidence: accuracyConfidence,
+        tier: tier
       });
 
       return profile;
@@ -106,7 +120,7 @@ export class PersonalityService {
   private async calculateAstrologicalData(birthData: BirthData): Promise<AstrologicalData> {
     // This is a simplified astrological calculation
     // In a real implementation, you would use a proper astrological library
-    const birthDate = new Date(birthData.birth_date);
+    const birthDate = new Date(birthData.birth_date!);
     const month = birthDate.getMonth() + 1;
     const day = birthDate.getDate();
 
@@ -116,7 +130,7 @@ export class PersonalityService {
     // For moon and rising signs, we need birth time and location
     // If not provided, we'll use simplified defaults
     const moonSign = birthData.birth_time ? this.calculateMoonSign(birthDate, birthData.birth_time) : sunSign;
-    const risingSign = birthData.birth_time ? this.calculateRisingSign(birthDate, birthData.birth_time, birthData.birth_location) : sunSign;
+    const risingSign = birthData.birth_time ? this.calculateRisingSign(birthDate, birthData.birth_time, birthData.birth_location!) : sunSign;
 
     // Planetary positions (simplified)
     const mercuryPosition = this.calculatePlanetaryPosition('mercury', birthDate);
@@ -130,12 +144,11 @@ export class PersonalityService {
       mercury_position: mercuryPosition,
       venus_position: venusPosition,
       mars_position: marsPosition,
-      birth_chart_data: {
-        birth_date: birthData.birth_date,
-        birth_time: birthData.birth_time,
-        birth_location: birthData.birth_location,
-        calculated_at: new Date().toISOString()
-      }
+      life_areas: [],
+      birth_date: typeof birthData.birth_date === 'string' ? new Date(birthData.birth_date) : (birthData.birth_date || null),
+      birth_time: birthData.birth_time || null,
+      birth_location: birthData.birth_location || null,
+      calculated_at: new Date().toISOString()
     };
   }
 
@@ -323,6 +336,119 @@ export class PersonalityService {
     }
 
     return Math.min(confidence, 95); // Cap at 95% to maintain humility
+  }
+
+  // New tier-based methods for progressive enhancement
+
+  private determineProfileTier(birthData: Partial<BirthData>): number {
+    if (!birthData.birth_date) return 1; // Basic behavioral profile
+    if (!birthData.birth_time || !birthData.birth_location) return 2; // Sun/Moon signs only
+    return 3; // Complete astrological profile
+  }
+
+  private async calculateTieredAstrologicalData(birthData: Partial<BirthData>, tier: number): Promise<AstrologicalData> {
+    if (tier === 1) {
+      // No birth data - return minimal structure
+      return {
+        sun_sign: 'Unknown',
+        moon_sign: 'Unknown',
+        rising_sign: 'Unknown',
+        mercury_position: 'Unknown',
+        venus_position: 'Unknown',
+        mars_position: 'Unknown',
+        life_areas: [],
+        birth_date: null,
+        birth_time: null,
+        birth_location: null,
+        calculated_at: new Date().toISOString()
+      };
+    } else if (tier === 2) {
+      // Birth date only - calculate Sun sign, estimate Moon
+      const birthDate = typeof birthData.birth_date === 'string' ? new Date(birthData.birth_date) : birthData.birth_date!;
+      const sunSign = this.calculateSunSign(
+        birthDate.getMonth() + 1, 
+        birthDate.getDate()
+      );
+      const moonSign = this.calculateMoonSign(birthDate, '12:00'); // Noon estimate
+      
+      return {
+        sun_sign: sunSign,
+        moon_sign: moonSign,
+        rising_sign: 'Unknown', // Requires birth time and location
+        mercury_position: 'Unknown',
+        venus_position: 'Unknown', 
+        mars_position: 'Unknown',
+        life_areas: [],
+        birth_date: birthDate,
+        birth_time: null,
+        birth_location: null,
+        calculated_at: new Date().toISOString()
+      };
+    } else {
+      // Full data available - use original calculation
+      return await this.calculateAstrologicalData(birthData as BirthData);
+    }
+  }
+
+  private mapToTieredPsychologicalTraits(astrologicalData: AstrologicalData, tier: number): PsychologicalTraits {
+    if (tier === 1) {
+      // Generic traits for users without birth data
+      return {
+        communication_style: 'adaptable and context-dependent',
+        decision_making_pattern: 'balanced analytical and intuitive approach',
+        stress_response: 'varies based on situation and preparation',
+        leadership_tendency: 'collaborative and situational leadership style',
+        growth_orientation: 'continuous learning and self-improvement focus'
+      };
+    } else if (tier === 2) {
+      // Limited traits based on Sun/Moon only
+      return {
+        communication_style: this.mapCommunicationStyle(astrologicalData.rising_sign, astrologicalData.mercury_position),
+        decision_making_pattern: this.mapDecisionMakingPattern(astrologicalData.sun_sign, astrologicalData.mars_position),
+        stress_response: this.mapStressResponse(astrologicalData.moon_sign),
+        leadership_tendency: `${astrologicalData.sun_sign}-influenced leadership approach (enhanced insights available with birth time)`,
+        growth_orientation: this.mapGrowthOrientation(astrologicalData.sun_sign, astrologicalData.moon_sign)
+      };
+    } else {
+      // Full traits calculation
+      return this.mapToPsychologicalTraits(astrologicalData);
+    }
+  }
+
+  private calculateTieredAccuracyConfidence(birthData: Partial<BirthData>, tier: number): number {
+    const baseConfidence = {
+      1: 30, // Behavioral analysis only
+      2: 60, // Sun/Moon signs
+      3: 85  // Complete chart
+    };
+    
+    return baseConfidence[tier as keyof typeof baseConfidence] || 30;
+  }
+
+  private getEnhancementSuggestions(birthData: Partial<BirthData>, tier: number): string[] {
+    const suggestions: string[] = [];
+    
+    if (tier === 1) {
+      suggestions.push('Add your birth date to unlock Sun and Moon sign insights');
+      suggestions.push('Complete birth information reveals your rising sign and houses');
+      suggestions.push('Full astrological profile provides 85% accuracy vs 30% current');
+    } else if (tier === 2) {
+      suggestions.push('Add birth time and location to unlock your rising sign');
+      suggestions.push('Complete chart reveals house placements and aspects');
+      suggestions.push('Full profile increases accuracy from 60% to 85%');
+    }
+    
+    return suggestions;
+  }
+
+  private getMissingComponents(birthData: Partial<BirthData>): string[] {
+    const missing: string[] = [];
+    
+    if (!birthData.birth_date) missing.push('Birth Date');
+    if (!birthData.birth_time) missing.push('Birth Time');
+    if (!birthData.birth_location) missing.push('Birth Location');
+    
+    return missing;
   }
 
   private generateCommunicationStyleInsight(profile: PersonalityProfile): string {
