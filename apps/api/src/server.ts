@@ -17,6 +17,7 @@ import userRoutes from './routes/user';
 import coachingRoutes from './routes/coaching';
 import progressRoutes from './routes/progress';
 import astrologyRoutes from './routes/astrology';
+import userEnhancementRoutes from './routes/user-enhancement';
 
 // Import services
 import { DatabaseService } from './services/database';
@@ -176,6 +177,7 @@ class AgenticCounselServer {
     this.app.use('/api/coaching', authMiddleware, coachingRoutes);
     this.app.use('/api/progress', authMiddleware, progressRoutes);
     this.app.use('/api/astrology', authMiddleware, astrologyRoutes);
+    this.app.use('/api/user-enhancement', authMiddleware, userEnhancementRoutes);
 
     // 404 handler
     this.app.use('*', (req, res) => {

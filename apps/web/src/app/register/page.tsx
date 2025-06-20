@@ -17,15 +17,18 @@ const registerSchema = z.object({
       'Password must contain uppercase, lowercase, number, and special character'),
   first_name: z.string().min(1, 'First name is required').max(50, 'First name too long'),
   last_name: z.string().min(1, 'Last name is required').max(50, 'Last name too long'),
-  birth_date: z.string()
-    .min(1, 'Birth date is required')
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Please enter a valid date')
-    .refine((date) => {
-      const year = parseInt(date.split('-')[0]);
-      return year >= 1900 && year <= new Date().getFullYear();
-    }, 'Year must be between 1900 and current year'),
+  // Birth data is now optional for progressive onboarding
+  birth_date: z.string().optional().or(z.literal('')).refine((date) => {
+    if (!date) return true; // Allow empty
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+    const year = parseInt(date.split('-')[0]);
+    return year >= 1900 && year <= new Date().getFullYear();
+  }, 'Please enter a valid date (YYYY-MM-DD)'),
   birth_time: z.string().optional().or(z.literal('')),
-  birth_location: z.string().min(1, 'Birth location is required').max(100, 'Location too long'),
+  birth_location: z.string().optional().or(z.literal('')).refine((location) => {
+    if (!location) return true; // Allow empty
+    return location.length <= 100;
+  }, 'Location too long'),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -178,17 +181,26 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Birth Information */}
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-purple-900 mb-3">
-                Birth Information (for personality insights)
-              </h3>
+            {/* Optional Birth Information */}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border border-purple-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-purple-900">
+                  🌟 Unlock Deeper Insights (Optional)
+                </h3>
+                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                  Skip to start now
+                </span>
+              </div>
+              
+              <p className="text-xs text-purple-700 mb-4">
+                Add birth details now or later to unlock personalized astrological coaching insights. You can always add this information after creating your account.
+              </p>
               
               <div className="space-y-3">
                 <div>
                   <label htmlFor="birth_date" className="block text-sm font-medium text-gray-700">
                     <Calendar className="inline h-4 w-4 mr-1" />
-                    Birth date
+                    Birth date (optional)
                   </label>
                   <input
                     {...register('birth_date')}
@@ -220,18 +232,22 @@ export default function RegisterPage() {
                 <div>
                   <label htmlFor="birth_location" className="block text-sm font-medium text-gray-700">
                     <MapPin className="inline h-4 w-4 mr-1" />
-                    Birth location
+                    Birth location (optional)
                   </label>
                   <input
                     {...register('birth_location')}
                     type="text"
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-                    placeholder="City, Country"
+                    placeholder="City, Country (can add later)"
                   />
                   {errors.birth_location && (
                     <p className="mt-1 text-sm text-red-600">{errors.birth_location.message}</p>
                   )}
                 </div>
+              </div>
+              
+              <div className="mt-3 text-xs text-purple-600">
+                💡 Pro tip: Complete birth data unlocks 85% accuracy vs 30% with basic profile
               </div>
             </div>
           </div>

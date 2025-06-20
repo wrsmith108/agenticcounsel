@@ -9,15 +9,16 @@ import { PersonalityService } from '../services/personalityService';
 
 const router = express.Router();
 
-// Validation middleware
+// Validation middleware - minimal requirements for fast onboarding
 const registerValidation = [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 8 }).matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/),
   body('first_name').trim().isLength({ min: 1, max: 50 }),
   body('last_name').trim().isLength({ min: 1, max: 50 }),
-  body('birth_date').isISO8601().toDate(),
+  // Birth data is now optional for progressive onboarding
+  body('birth_date').optional().isISO8601().toDate(),
   body('birth_time').optional().matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  body('birth_location').trim().isLength({ min: 1, max: 100 })
+  body('birth_location').optional().trim().isLength({ min: 1, max: 100 })
 ];
 
 const loginValidation = [
@@ -68,32 +69,49 @@ router.post('/register', registerValidation, async (req: Request, res: Response)
     const saltRounds = 12;
     const password_hash = await bcrypt.hash(password, saltRounds);
 
-    // Generate personality profile
+    // Determine profile completeness tier based on available birth data
+    let profileTier = 1; // Default: basic profile
+    let birthDataAddedAt = null;
+    
+    if (birth_date) {
+      profileTier = 2; // Birth date provided
+      birthDataAddedAt = new Date();
+      
+      if (birth_time && birth_location) {
+        profileTier = 3; // Complete birth data
+      }
+    }
+
+    // Generate personality profile with available data
     const personalityService = new PersonalityService(db);
     const personality_profile = await personalityService.generatePersonalityProfile({
-      birth_date: birth_date,
-      birth_time,
-      birth_location
+      birth_date: birth_date || null,
+      birth_time: birth_time || null,
+      birth_location: birth_location || null
     });
 
-    // Create user
+    // Create user with tier tracking
     const result = await db.query(
       `INSERT INTO users (
         email, password_hash, first_name, last_name, 
-        birth_date, birth_time, birth_location, personality_profile
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+        birth_date, birth_time, birth_location, personality_profile,
+        profile_completeness_tier, birth_data_added_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
       RETURNING user_id, email, first_name, last_name, birth_date, 
                 birth_time, birth_location, personality_profile, 
-                coaching_goals, onboarding_completed, created_at`,
+                coaching_goals, onboarding_completed, created_at,
+                profile_completeness_tier`,
       [
         email,
         password_hash,
         first_name,
         last_name,
-        birth_date,
-        birth_time,
-        birth_location,
-        JSON.stringify(personality_profile)
+        birth_date || null,
+        birth_time || null,
+        birth_location || null,
+        JSON.stringify(personality_profile),
+        profileTier,
+        birthDataAddedAt
       ]
     );
 

@@ -33,6 +33,10 @@ export interface PersonalityProfile {
   coaching_recommendations?: string[];
   created_at: Date;
   confidence_score?: number;
+  // Progressive enhancement fields
+  profile_tier?: number;
+  enhancement_suggestions?: string[];
+  missing_components?: string[];
 }
 
 export interface AstrologicalData {
@@ -42,7 +46,11 @@ export interface AstrologicalData {
   mercury_position: string;
   venus_position: string;
   mars_position: string;
-  birth_chart_data: Record<string, any>;
+  life_areas?: string[];
+  birth_date?: Date | null;
+  birth_time?: string | null;
+  birth_location?: string | null;
+  calculated_at: string;
 }
 
 export interface PsychologicalTraits {
@@ -159,9 +167,9 @@ export interface Challenge {
 
 // Birth Data Types
 export interface BirthData {
-  birth_date: string;
-  birth_time?: string;
-  birth_location: string;
+  birth_date?: Date | string | null;
+  birth_time?: string | null;
+  birth_location?: string | null;
 }
 
 // Authentication Types
@@ -341,13 +349,18 @@ export interface SwissBirthData {
 }
 
 export interface PlanetaryPosition {
-  celestial_body: CelestialBody;
+  body: CelestialBody; // Compatibility with existing code
+  celestial_body?: CelestialBody; // Alternative name
   longitude: number; // 0-360 degrees
   latitude: number; // -90 to 90 degrees
-  house_number: number; // 1-12
+  distance?: number; // AU from Earth
+  speed?: number; // Daily motion in degrees
+  house?: number | null; // 1-12, null if unavailable
+  house_number?: number; // Alternative name for compatibility
   zodiac_sign: ZodiacSign;
   degree_in_sign: number; // 0-30 degrees
-  retrograde: boolean;
+  is_retrograde?: boolean;
+  retrograde?: boolean; // Alternative name for compatibility
 }
 
 export interface HouseCusp {

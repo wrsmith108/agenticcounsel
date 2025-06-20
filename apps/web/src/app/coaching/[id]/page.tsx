@@ -26,6 +26,7 @@ export default function CoachingChatPage() {
   const [connected, setConnected] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasLoadedRef = useRef(false);
   const { isAuthenticated } = useAuth();
   const params = useParams();
   const router = useRouter();
@@ -43,6 +44,13 @@ export default function CoachingChatPage() {
     }
 
     return () => {
+      // Clean up socket listeners before disconnecting
+      socketService.off('connect');
+      socketService.off('disconnect');
+      socketService.off('session_joined');
+      socketService.off('new_message');
+      socketService.off('conversation_updated');
+      socketService.off('connect_error');
       socketService.disconnect();
     };
   }, [conversationId, isAuthenticated, router]);
@@ -107,7 +115,16 @@ export default function CoachingChatPage() {
         senderType: message.sender_type,
         contentPreview: message.content?.substring(0, 50) + '...'
       });
-      setMessages(prev => [...prev, message]);
+      setMessages(prev => {
+        // Check if message already exists to prevent duplicates
+        if (prev.find(m => m.message_id === message.message_id)) {
+          console.log('⚠️ FRONTEND DEBUG: Message already exists, skipping duplicate', {
+            messageId: message.message_id
+          });
+          return prev;
+        }
+        return [...prev, message];
+      });
     });
 
     socketService.on('conversation_updated', (updatedConversation: CoachingSession) => {
@@ -166,12 +183,17 @@ export default function CoachingChatPage() {
           
           // If HTTP response includes both messages, add them to the UI immediately
           // This ensures users see responses even if WebSocket has issues
-          if (!messages.find(m => m.message_id === response.data.user_message.message_id)) {
-            setMessages(prev => [...prev, response.data.user_message]);
-          }
-          if (!messages.find(m => m.message_id === response.data.coach_response.message_id)) {
-            setMessages(prev => [...prev, response.data.coach_response]);
-          }
+          // Use functional updates to avoid stale closure issues
+          setMessages(prev => {
+            const newMessages = [...prev];
+            if (!prev.find(m => m.message_id === response.data.user_message.message_id)) {
+              newMessages.push(response.data.user_message);
+            }
+            if (!prev.find(m => m.message_id === response.data.coach_response.message_id)) {
+              newMessages.push(response.data.coach_response);
+            }
+            return newMessages;
+          });
         } else if (response.data?.user_message) {
           console.log('⚠️ FRONTEND DEBUG: Only user message received via HTTP', {
             userMessageId: response.data.user_message.message_id,
@@ -179,9 +201,12 @@ export default function CoachingChatPage() {
           });
           
           // Add user message if not already present
-          if (!messages.find(m => m.message_id === response.data.user_message.message_id)) {
-            setMessages(prev => [...prev, response.data.user_message]);
-          }
+          setMessages(prev => {
+            if (!prev.find(m => m.message_id === response.data.user_message.message_id)) {
+              return [...prev, response.data.user_message];
+            }
+            return prev;
+          });
         } else {
           console.error('❌ FRONTEND DEBUG: No messages in response data');
         }
